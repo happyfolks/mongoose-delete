@@ -139,15 +139,21 @@ module.exports = function (schema, options) {
             schema.pre('aggregate', function() {
                 var firstMatch = this.pipeline()[0];
 
-                if(firstMatch.$match?.deleted?.$ne !== false){
-                    if(firstMatch.$match?.showAllDocuments === 'true'){
-                        var {showAllDocuments, ...replacement} = firstMatch.$match;
-                        this.pipeline().shift();
-                        if(Object.keys(replacement).length > 0){
-                            this.pipeline().unshift({ $match: replacement });
+                var softDeleteQuery = { $match: { deleted: { '$ne': true } } };
+
+                if(firstMatch.$search) {
+                    this.pipeline().splice(1,0,softDeleteQuery)
+                } else {
+                    if(firstMatch.$match?.deleted?.$ne !== false){
+                        if(firstMatch.$match?.showAllDocuments === 'true'){
+                            var {showAllDocuments, ...replacement} = firstMatch.$match;
+                            this.pipeline().shift();
+                            if(Object.keys(replacement).length > 0){
+                                this.pipeline().unshift({ $match: replacement });
+                            }
+                        }else{
+                            this.pipeline().unshift(softDeleteQuery);
                         }
-                    }else{
-                        this.pipeline().unshift({ $match: { deleted: { '$ne': true } } });
                     }
                 }
             });
